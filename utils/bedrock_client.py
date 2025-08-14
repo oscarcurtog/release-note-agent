@@ -20,7 +20,6 @@ class BedrockClient:
     """Client for interacting with AWS Bedrock Claude model."""
 
     def __init__(self) -> None:
-        """Initialize the Bedrock client and logger."""
         self.client = boto3.client(
             "bedrock-runtime",
             region_name=Config.AWS_REGION,
@@ -34,35 +33,40 @@ class BedrockClient:
         self,
         prompt: str,
         max_tokens: int = 4000,
-        response_format: Optional[Dict[str, Any]] = None,  # not used; kept for API compat
+        response_format: Optional[Dict[str, Any]] = None,  # kept for API compat
     ) -> str:
         """
-        Invoke the Claude model with a prompt.
-
-        Returns:
-            The model's response text.
+        Invoke the Claude model with a prompt and return the raw text.
         """
         try:
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": max_tokens,
+                # Claude en Bedrock requiere lista de bloques en `content`
                 "messages": [
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": [{"type": "text", "text": prompt}]}
                 ],
+                # opcional: "temperature": 0.1,
             }
 
             if response_format:
-                # Not supported today by Bedrock; mantenemos la firma por compatibilidad.
-                self.logger.warning("response_format is not supported in current Bedrock API; ignoring.")
+                self.logger.warning(
+                    "response_format is not supported in current Bedrock API; ignoring."
+                )
 
             resp = self.client.invoke_model(
                 modelId=self.model_id,
-                body=json.dumps(body),
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(body).encode("utf-8"),
             )
+            # cuerpo es un stream; lo leemos y parseamos
             payload = resp.get("body")
-            text = payload.read() if hasattr(payload, "read") else payload  # bytes o str
-            data = json.loads(text.decode("utf-8") if isinstance(text, (bytes, bytearray)) else text)
+            raw = payload.read() if hasattr(payload, "read") else payload
+            data = json.loads(raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw)
 
+            # Respuesta Anthropic (Claude) en Bedrock:
+            # { ..., "content": [{"type":"text","text":"..."}], ... }
             content = data["content"][0]["text"]
             if not content or not content.strip():
                 raise BedrockError("Empty text content in response", code="UNKNOWN")
@@ -76,19 +80,18 @@ class BedrockClient:
             raise BedrockError(f"Error invoking Bedrock model: {e}", code="UNKNOWN")
 
     def complete_json(self, prompt: str) -> str:
-    """
-    Back-compat shim expected by the agent: returns the raw text
-    (which debería contener JSON) usando invoke_model.
-    """
-    try:
-        return self.invoke_model(prompt, max_tokens=4000)
-    except BedrockError:
-        raise
-    except Exception as e:
-        # normalizamos a BedrockError para el agente
-        raise BedrockError(f"Bedrock completion failed: {e}", code="UNKNOWN")
+        """
+        Back-compat shim expected by the agent: returns the raw text
+        (which should contain JSON) using invoke_model.
+        """
+        try:
+            return self.invoke_model(prompt, max_tokens=4000)
+        except BedrockError:
+            raise
+        except Exception as e:
+            # normalizamos a BedrockError para el agente
+            raise BedrockError(f"Bedrock completion failed: {e}", code="UNKNOWN")
 
-    
     def get_gap_analysis_schema(self) -> Dict[str, Any]:
         """JSON schema kept for compatibility with other tools."""
         return {
@@ -145,4 +148,3 @@ class BedrockClient:
 
 
 __all__ = ["BedrockClient", "BedrockError"]
-
