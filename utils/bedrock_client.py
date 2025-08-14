@@ -75,6 +75,20 @@ class BedrockClient:
         except Exception as e:
             raise BedrockError(f"Error invoking Bedrock model: {e}", code="UNKNOWN")
 
+    def complete_json(self, prompt: str) -> str:
+    """
+    Back-compat shim expected by the agent: returns the raw text
+    (which debería contener JSON) usando invoke_model.
+    """
+    try:
+        return self.invoke_model(prompt, max_tokens=4000)
+    except BedrockError:
+        raise
+    except Exception as e:
+        # normalizamos a BedrockError para el agente
+        raise BedrockError(f"Bedrock completion failed: {e}", code="UNKNOWN")
+
+    
     def get_gap_analysis_schema(self) -> Dict[str, Any]:
         """JSON schema kept for compatibility with other tools."""
         return {
@@ -131,3 +145,4 @@ class BedrockClient:
 
 
 __all__ = ["BedrockClient", "BedrockError"]
+
