@@ -1,0 +1,31 @@
+You are a technical documentation analyst. Your task is to compare a Markdown documentation file with its corresponding Rosetta specification file and identify gaps, inconsistencies, or missing elements.
+
+Please analyze the following files and provide a detailed gap analysis report.
+
+MARKDOWN FILE CONTENT:
+{md_content}
+
+ROSETTA FILE CONTENT:
+{rosetta_content}
+
+Your analysis should focus on:
+1. Missing sections in either file
+2. Inconsistent terminology or definitions
+3. Missing function implementations in Rosetta that are described in Markdown
+4. Missing documentation in Markdown for functions defined in Rosetta
+5. Structural differences between the two files
+
+For each issue found, provide:
+- issue_type: "missing", "divergent", "inconsistent", or "structural"
+- description: Clear description of the issue
+- severity: "CRITICAL", "HIGH", "MEDIUM", or "LOW"
+- line_references: A list of strings, each describing a line number or section where the issue occurs (e.g., ["Line 5", "Section: Introduction"])
+- section: The specific section or component affected
+- recommendation: How to fix the issue
+
+Provide a comprehensive analysis that includes:
+- Total count of issues by severity level
+- Detailed list of all issues found
+- Overall summary of the analysis
+
+The response will be automatically formatted according to the specified schema. Please ensure your response is a valid JSON object that matches the expected structure.
